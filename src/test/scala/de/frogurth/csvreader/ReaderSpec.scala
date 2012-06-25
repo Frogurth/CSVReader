@@ -9,6 +9,8 @@ import java.io.File
 class CSVReaderSpec extends FlatSpec with ShouldMatchers {
   val emptyTestFile = "src/test/resources/empty.csv"
   val validTestFile = "src/test/resources/valid.csv"
+  val invalidTestFile = "src/test/resources/invalid.csv"
+  val headerOnlyTestFile = "src/test/resources/headerOnly.csv"
     
   "A FileReder" should "read a file" in {
     val f = CSVFileReader.readFile(emptyTestFile)
@@ -40,7 +42,14 @@ class CSVReaderSpec extends FlatSpec with ShouldMatchers {
       (Map("name" -> "hans", "family" -> "peter", "age" -> "24").some)
   }
   
-  it should "fail with on to many values" is (pending) 
-  it should "fail with on to few values" is (pending) 
-  it should "fail with on header only" is (pending) 
+  it should "fail on invalid file" in {
+    val parser = CSVParser(invalidTestFile, ",")
+    parser.isFailur should be (true)
+  }
+  
+  it should "fail with header only" in {
+    val parser = CSVParser(headerOnlyTestFile, ",")
+    parser.isFailur should be (true)
+    parser.errors.get.head should be ("No content after header information!")
+  }
 }

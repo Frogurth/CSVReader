@@ -25,35 +25,29 @@ case class CSVParser(path: String, seperator: String) extends CSVFileReader {
     }
   }
   
-  def parseHeader(c: List[String]): ValidationNEL[String, RecordNEL] = {
+  def parseHeader(c: List[String]): Validation[NonEmptyList[String], RecordNEL] = {
     val header = c.head |> {_ split seperator}
     
-    try{
-      val res = c.tail map {
-        line =>
-          val values = line split seperator
-          if(values.length > header.length)
-            throw new Exception("to many values on line " + c.indexOf(line))
-          if(values.length < header.length)
-        	  throw new Exception("to few values on line " + c.indexOf(line))
-          (header zip values).toMap
-      }
-      
-      nel(res.head, res.tail).success
-    } catch {
-      case e: Exception => e.getMessage.failNel
+    val res = (c.tail map {
+      line =>
+        val values = line split seperator
+        if(values.length > header.length)
+          ("to many values on line " + c.indexOf(line)).failNel
+        if(values.length < header.length)
+      	  ("to few values on line " + c.indexOf(line)).failNel
+        else
+          (header zip values).toMap.success
+    }) map { _.map(nel(_)) } foldl1 {
+      (pv, v) =>
+        (pv <**> v) {_ |+| _}
     }
+    
+    res.get
   }
   
-  def records: Option[RecordNEL] = content match {
-    case Success(value) => some(value)
-    case Failure(_) => none
-  }
+  def records: Option[RecordNEL] = content fold (e => none, s => some(s))
   
-  def errors = content match {
-    case Success(_) => none
-    case Failure(messages) => some(messages)
-  }
+  def errors = content fold (e => some(e), s => none)
   
   def isFailur = content.isFailure
   
